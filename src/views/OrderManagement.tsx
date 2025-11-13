@@ -5,7 +5,7 @@ import api from '../http/api';
 
 export interface Order {
   id: number;
-  cliente: string;
+  cliente_nome: string;
   status: string;
   total: number;
 }
@@ -18,7 +18,7 @@ const OrderManagement = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await api.get<Order[]>('/pedidos/');
+        const response = await api.get<Order[]>('/pedidos');
         if (!response.status.toString().startsWith('2')) {
           throw new Error('Erro ao buscar os pedidos');
         }
@@ -52,7 +52,7 @@ const OrderManagement = () => {
     navigate(`/admin/usuarios/editar/${order.id}`);
   };
   const columns: (keyof Order | 'Ações')[] = [
-    'cliente',
+    'cliente_nome',
     'status',
     'total',
     'Ações',
@@ -64,7 +64,7 @@ const OrderManagement = () => {
         <h2 className="text-2xl font-bold">Gestão de Pedidos</h2>
         <button
           type="button"
-          onClick={() => navigate('/admin/pedido/new')}
+          onClick={() => navigate('/admin/pedidos/novo')}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
         >
           Novo Pedido
