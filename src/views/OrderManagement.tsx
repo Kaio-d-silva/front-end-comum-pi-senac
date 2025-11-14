@@ -23,6 +23,7 @@ const OrderManagement = () => {
           throw new Error('Erro ao buscar os pedidos');
         }
         const data: Order[] = response.data;
+        console.log(data);
         setOrders(data);
       } catch (error) {
         console.error('Erro ao buscar os pedidos:', error);
@@ -49,7 +50,7 @@ const OrderManagement = () => {
   };
 
   const handleView = (order: Order) => {
-    navigate(`/admin/usuarios/editar/${order.id}`);
+    navigate(`/admin/pedidos/editar/${order.id}`);
   };
   const columns: (keyof Order | 'Ações')[] = [
     'cliente_nome',

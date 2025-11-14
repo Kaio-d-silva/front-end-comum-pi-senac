@@ -98,6 +98,10 @@ const routes: RouteConfig[] = [
             path: 'pedidos/novo',
             element: <FormularioPedido />,
           },
+          {
+            path: 'pedidos/editar/:id',
+            element: <FormularioPrato isEditing />,
+          },
         ],
       },
     ],
