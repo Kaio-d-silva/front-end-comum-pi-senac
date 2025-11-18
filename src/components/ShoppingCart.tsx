@@ -1,67 +1,91 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useContext, useState } from 'react';
-import { CartContext } from '../context/cartContext';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { CartContext } from '../context/cartContext';
 
-interface Dish {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
+const formatPhoneNumber = (value: string) => {
+  // Se o valor não for um dígito, remove-o
+  if (!value) return "";
+  
+  // Mantém apenas dígitos
+  value = value.replace(/\D/g, "");
+  
+  // Limita o comprimento a 11 dígitos (incluindo DDD e o 9 extra)
+  value = value.substring(0, 11);
+
+  // Aplica a máscara: (XX) XXXX-XXXX ou (XX) XXXXX-XXXX
+  if (value.length <= 10) {
+    // Formato para 8 ou 9 dígitos (ex: (DD) 1234-5678)
+    return value.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  } else {
+    // Formato para 9 dígitos (ex: (DD) 91234-5678)
+    return value.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  }
+};
 
 const ShoppingCart: React.FC = () => {
-  const [dishes, setDishes] = useState<Dish[]>([
-    { id: 1, name: 'Prato 1', price: 25.0, quantity: 1 },
-    { id: 2, name: 'Prato 2', price: 30.0, quantity: 2 },
-    { id: 3, name: 'Prato 3', price: 20.0, quantity: 1 },
-  ]);
-
-  const navigate = useNavigate();
-  const [address, setAddress] = useState<string>('');
-  const [paymentInfo, setPaymentInfo] = useState<string>('');
-
-  const handleQuantityChange = (id: number, quantity: number) => {
-    setDishes((prevDishes) =>
-      prevDishes.map((dish) =>
-        dish.id === id ? { ...dish, quantity: Math.max(0, quantity) } : dish,
-      ),
-    );
-  };
-
-  const total = dishes.reduce(
-    (sum, dish) => sum + dish.price * dish.quantity,
-    0,
-  );
-
-  const handleConfirmOrder = () => {
-    console.log('Pedido confirmado:', { dishes, address, paymentInfo });
-    alert('Pedido confirmado!');
-  };
-
-  const cartContext = useContext(CartContext);
+  const cartContext = React.useContext(CartContext);
 
   if (!cartContext) {
     throw new Error('CartContext não está disponível');
   }
 
-  const {
-    pratos: pratosNoCarrinho,
-    adicionarPrato,
-    removerPrato,
-  } = cartContext;
+  const { pratos, totalCompra, removerPrato, adicionarPrato } = cartContext;
+
+  const navigate = useNavigate();
+  const [address, setAddress] = useState<string>('');
+  const [paymentInfo, setPaymentInfo] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+
+  const handleQuantityChange = (id: number, quantity: number) => {
+    updateQuantity(id, quantity);
+  };
+
+  const updateQuantity = (id: number, quantity: number) => {
+    if (quantity > 0) {
+      const pratoExists = pratos?.find((prato) => prato.id === id);
+      if (!pratoExists) return;
+      pratoExists.quantidade = quantity;
+      adicionarPrato(pratoExists);
+      return;
+    }
+    removerPrato(id);
+  };
+
+  const changeNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedPhoneNumber = formatPhoneNumber(e.target.value);
+    setPhone(formattedPhoneNumber);
+  }
+
+  const handleConfirmOrder = () => {
+    alert('Pedido confirmado!');
+  };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-6">
       {/* Dados do cliente e pagamento */}
       <div className="flex-1 bg-white shadow-lg rounded-lg p-4">
-        <h2 className="text-xl font-bold mb-4">Dados do Cliente</h2>
-        <button
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold mb-4">Dados do Cliente</h2>
+          <button
             onClick={() => navigate(-1)}
             className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
           >
             Voltar
           </button>
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Telefone Celular
+          </label>
+          <input
+            type="text"
+            className="w-full border border-gray-300 rounded p-2"
+            placeholder="Digite seu telefone celular"
+            value={phone}
+            onChange={changeNumber}
+          />
+        </div>
+
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Endereço de Entrega
@@ -91,7 +115,7 @@ const ShoppingCart: React.FC = () => {
 
         <div className="flex items-center justify-between font-bold text-lg">
           <span>Total:</span>
-          <span>R$ {total.toFixed(2)}</span>
+          <span>R$ {totalCompra.toFixed(2)}</span>
         </div>
 
         <button
@@ -105,21 +129,21 @@ const ShoppingCart: React.FC = () => {
       <div className="flex-1 bg-white shadow-lg rounded-lg p-4">
         <h2 className="text-xl font-bold mb-4">Carrinho de Compras</h2>
         <div className="h-96 overflow-y-auto">
-          {dishes.map((dish) => (
+          {pratos?.map((prato) => (
             <div
-              key={dish.id}
+              key={prato.id}
               className="flex items-center justify-between border-b border-gray-200 py-2"
             >
               <div>
-                <h3 className="text-lg font-semibold">{dish.name}</h3>
+                <h3 className="text-lg font-semibold">{prato.nome}</h3>
                 <p className="text-sm text-gray-500">
-                  R$ {dish.price.toFixed(2)}
+                  R$ {prato.valor.toFixed(2)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() =>
-                    handleQuantityChange(dish.id, dish.quantity - 1)
+                    handleQuantityChange(prato.id, prato.quantidade - 1)
                   }
                   className="bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300"
                 >
@@ -127,16 +151,16 @@ const ShoppingCart: React.FC = () => {
                 </button>
                 <input
                   type="number"
-                  value={dish.quantity}
+                  value={prato.quantidade}
                   onChange={(e) =>
-                    handleQuantityChange(dish.id, parseInt(e.target.value, 10))
+                    handleQuantityChange(prato.id, parseInt(e.target.value, 10))
                   }
                   className="w-12 text-center border border-gray-300 rounded"
                   min={0}
                 />
                 <button
                   onClick={() =>
-                    handleQuantityChange(dish.id, dish.quantity + 1)
+                    handleQuantityChange(prato.id, prato.quantidade + 1)
                   }
                   className="bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300"
                 >

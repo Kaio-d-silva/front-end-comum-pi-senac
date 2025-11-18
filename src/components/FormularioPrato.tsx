@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import useForm from '../hooks/useForm';
 import api from '../http/api';
-import Prato from '../interface/Prato';
+import Pedido from '../interface/Pedido';
 import Snackbar from './Snackbar';
 
-export interface PratoFormProps {
+export interface PedidoFormProps {
   isEditing?: boolean; // Indica se o formulário está no modo de edição
 }
 
-interface PratoFormParams extends Record<string, string | undefined> {
+interface PedidoFormParams extends Record<string, string | undefined> {
   id?: string; // ID do usuário, opcional
 }
 
@@ -19,13 +19,13 @@ interface SnackbarState {
   duration: number;
 }
 
-const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
+const FormularioPedido: React.FC<PedidoFormProps> = ({ isEditing = false }) => {
   const [snackbar, setSnackbar] = useState<SnackbarState>({
     message: '',
     type: 'success',
     duration: 0,
   });
-  const defaultPratoValues = {
+  const defaultPedidoValues = {
     nome: '',
     cozinha: '',
     descricao_resumida: '',
@@ -34,16 +34,16 @@ const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
     valor: 0,
   };
   const { values, errors, handleChange, validate, updateValues } =
-    useForm(defaultPratoValues);
+    useForm(defaultPedidoValues);
 
-  const { id } = useParams<PratoFormParams>();
+  const { id } = useParams<PedidoFormParams>();
 
   useEffect(() => {
     if (isEditing && id) {
       // Busca os dados do usuário para edição
       const fetchUser = async () => {
         try {
-          const response = await api.get(`/pratos/${id}`);
+          const response = await api.get(`/pedidos/${id}`);
           const {
             nome,
             cozinha,
@@ -95,13 +95,13 @@ const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
 
     if (isValid) {
       try {
-        await api.post<Prato[]>('/pratos', values);
+        await api.post<Pedido[]>('/pedidos', values);
         setSnackbar({
-          message: 'Prato cadastrado com sucesso!',
+          message: 'Pedido cadastrado com sucesso!',
           type: 'success',
           duration: 10000,
         });
-        updateValues(defaultPratoValues);
+        updateValues(defaultPedidoValues);
       } catch (error) {
         console.error('Erro ao cadastrar o prato:', error);
         setSnackbar({
@@ -120,12 +120,12 @@ const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
         className="bg-white shadow-md rounded-lg p-6 w-full max-w-lg"
       >
         <h1 className="text-2xl font-bold mb-6 text-center">
-          Cadastrar Novo Prato
+          Cadastrar Novo Pedido
         </h1>
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Imagem do Prato
+            Imagem do Pedido
           </label>
           <input
             type="text"
@@ -144,7 +144,7 @@ const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome do Prato
+            Nome do Pedido
           </label>
           <input
             type="text"
@@ -218,7 +218,7 @@ const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Valor do Prato
+            Valor do Pedido
           </label>
           <input
             type="text"
@@ -239,7 +239,7 @@ const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
           type="submit"
           className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
         >
-          Cadastrar Prato
+          Cadastrar Pedido
         </button>
       </form>
       <Snackbar
@@ -252,4 +252,4 @@ const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
   );
 };
 
-export default FormularioPrato;
+export default FormularioPedido;

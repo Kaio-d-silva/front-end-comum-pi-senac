@@ -13,6 +13,7 @@ import Login from '../views/Login';
 import OrderManagement from '../views/OrderManagement';
 import UserForm from '../views/UserForm';
 import UserManagement from '../views/UserManagement';
+import FormularioPedido from '../components/FormularioPedido';
 
 export interface RouteConfig {
   path: string;
@@ -92,6 +93,14 @@ const routes: RouteConfig[] = [
           {
             path: 'pedidos',
             element: <OrderManagement />,
+          },
+          {
+            path: 'pedidos/novo',
+            element: <FormularioPedido />,
+          },
+          {
+            path: 'pedidos/editar/:id',
+            element: <FormularioPrato isEditing />,
           },
         ],
       },

@@ -1,27 +1,34 @@
-/* eslint-disable react/require-default-props */
-import * as React from 'react';
-import { useState, useEffect, JSX } from 'react';
+import React, { useEffect } from 'react';
 
 interface SnackbarProps {
-  message: string; // Mensagem a ser exibida no Snackbar
-  type?: 'success' | 'error' | 'warning' | 'info'; // Tipo do Snackbar
-  duration?: number; // Duração em milissegundos
-  onClose?: () => void; // Função chamada ao fechar o Snackbar
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info' | undefined;
+  duration?: number;
+  position?:
+    | 'center'
+    | 'center-right'
+    | 'center-left'
+    | 'top-center'
+    | 'top-left'
+    | 'top-right'
+    | 'bottom-center'
+    | 'bottom-left'
+    | 'bottom-right';
+  onClose?: () => void;
 }
 
-function Snackbar({
+const Snackbar: React.FC<SnackbarProps> = ({
   message,
-  type = 'success', // Tipo do Snackbar
-  duration = 10000, // Valor padrão
-  onClose = undefined, // Valor padrão
-}: SnackbarProps): JSX.Element | null {
-  const [visible, setVisible] = useState<boolean>(false);
+  type = 'info',
+  duration = 3000,
+  position = 'bottom-center',
+  onClose,
+}) => {
+  const [visible, setVisible] = React.useState<boolean>(false);
 
   useEffect(() => {
     if (message) {
       setVisible(true);
-
-      // Oculta o snackbar após o tempo definido
       const timer = setTimeout(() => {
         setVisible(false);
         if (onClose) onClose();
@@ -41,15 +48,27 @@ function Snackbar({
     info: 'bg-blue-500 text-white',
   };
 
+  const positionStyles: Record<string, string> = {
+    'center': 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2',
+    'center-right': 'top-1/2 right-4 transform -translate-y-1/2',
+    'center-left': 'top-1/2 left-4 transform -translate-y-1/2',
+    'top-center': 'top-4 left-1/2 transform -translate-x-1/2',
+    'top-left': 'top-4 left-4',
+    'top-right': 'top-4 right-4',
+    'bottom-center': 'bottom-4 left-1/2 transform -translate-x-1/2',
+    'bottom-left': 'bottom-4 left-4',
+    'bottom-right': 'bottom-4 right-4',
+  };
+
   return (
     <div
-      className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded shadow-lg ${typeStyles[type]} transition-opacity duration-300`}
+      className={`fixed z-50 px-4 py-2 rounded shadow-lg ${typeStyles[type]} ${
+        positionStyles[position]
+      } transition-opacity duration-300`}
     >
       {message}
     </div>
   );
-}
-
-// Removed defaultProps as default values are already set in the function parameters
+};
 
 export default Snackbar;
