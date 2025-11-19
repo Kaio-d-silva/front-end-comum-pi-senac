@@ -1,6 +1,9 @@
+// src/app/App.tsx (ajuste o caminho conforme sua estrutura)
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import routes, { RouteConfig } from '../config/routes';
+import { AuthProvider } from '../context/authContext';
+import { CartProvider } from '../context/cartContext';
 
 const renderRoutes = (routes: RouteConfig[]) => {
   return routes.map((route, index) => (
@@ -12,9 +15,13 @@ const renderRoutes = (routes: RouteConfig[]) => {
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <Routes>{renderRoutes(routes)}</Routes>
-    </Router>
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <Routes>{renderRoutes(routes)}</Routes>
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 };
 

@@ -1,7 +1,11 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useState, useContext } from 'react';
 import { Link } from 'react-router';
 import { CartContext, PratoCarrinho } from '../context/cartContext';
 import Snackbar from './Snackbar';
+import Card from './ui/Card';
+import PrimaryButton from './ui/PrimaryButton';
+import IconButton from './ui/IconButton';
+import Tag from './ui/Tag';
 
 interface SnackbarState {
   message: string;
@@ -10,22 +14,30 @@ interface SnackbarState {
 }
 
 interface CardPratoProps {
-  id?: number;
+  id: number;
   nome: string;
   cozinha: string;
   descricao_resumida: string;
   imagem: string;
-  prazoValidade?: Date; // Opcional, caso queira adicionar no futuro
-  valor?: number; // Opcional, caso queira adicionar no futuro
+  prazoValidade?: Date;
+  valor: number;
 }
 
-const CardPrato: FC<CardPratoProps> = (props) => {
-  const cartContext = React.useContext(CartContext);
+const CardPrato: FC<CardPratoProps> = ({
+  id,
+  nome,
+  cozinha,
+  descricao_resumida,
+  imagem,
+  valor,
+}) => {
+  const cartContext = useContext(CartContext);
   const [snackbar, setSnackbar] = useState<SnackbarState>({
     message: '',
     type: 'success',
     duration: 0,
   });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   if (!cartContext) {
     throw new Error('CartContext não está disponível');
@@ -33,76 +45,127 @@ const CardPrato: FC<CardPratoProps> = (props) => {
 
   const { pratos, adicionarPrato } = cartContext;
 
-  const addDishToCart = () => {
-    const pratoExists = pratos?.find((prato) => prato.id === props.id);
-    if (!pratoExists) {
-      const pratoToAdd: PratoCarrinho = {
-        id: props.id,
-        nome: props.nome,
-        valor: props.valor,
-        quantidade: 1,
-      } as PratoCarrinho;
-      adicionarPrato(pratoToAdd);
-    } else {
-      pratoExists.quantidade += 1;
-      adicionarPrato(pratoExists);
-    }
+  const handleAddDishToCart = () => {
+    const pratoExistente = pratos?.find((prato) => prato.id === id);
+    const quantidade = pratoExistente ? pratoExistente.quantidade + 1 : 1;
+
+    const pratoToAdd: PratoCarrinho = pratoExistente
+      ? { ...pratoExistente, quantidade }
+      : {
+          id,
+          nome,
+          valor,
+          quantidade,
+        };
+
+    adicionarPrato(pratoToAdd);
+
     setSnackbar({
-      message: `Prato adicionado ao carrinho com sucesso! Quantidade: ${pratoExists ? pratoExists.quantidade : 1}`,
+      message: `Prato adicionado ao carrinho com sucesso! Quantidade: ${quantidade}`,
       type: 'success',
       duration: 5000,
     });
+
+    setIsMenuOpen(false);
   };
+
   return (
-    <div className="min-h-full relative bg-white shadow-md rounded-lg overflow-hidden">
-      {/* Imagem do prato */}
-      <img
-        src={props.imagem}
-        alt={props.nome}
-        className="w-full h-48 object-cover"
-      />
+    <Card>
+      {/* Imagem */}
+      <div className="relative">
+        <img
+          src={imagem}
+          alt={nome}
+          className="h-40 w-full object-cover sm:h-44"
+          loading="lazy"
+        />
 
-      {/* Conteúdo do card */}
-      <div className="p-4">
-        <h2 className="text-lg font-bold">{props.nome}</h2>
-        <p className="text-sm text-gray-500">{props.cozinha}</p>
-        <p className="text-sm mt-2 text-gray-700">{props.descricao_resumida}</p>
-      </div>
+        {/* Menu de opções */}
+        <div className="absolute right-2 top-2">
+          <IconButton
+            srLabel="Mais opções"
+            aria-haspopup="true"
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+          >
+            &#x22EE;
+          </IconButton>
 
-      {/* Botão de menu e dropdown */}
-      <div className="absolute top-2 right-2 group">
-        <button className="menu-button bg-gray-200 text-gray-700 rounded-full p-2 hover:bg-gray-300 focus:outline-none">
-          &#x22EE;
-        </button>
-        <div className="dropdown-menu absolute right-0 mt-2 bg-white shadow-lg rounded-lg w-40 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200">
-          <Link
-            to="/carrinho"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Ir para carrinho
-          </Link>
-          <button
-            type="button"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-            onClick={addDishToCart}
-          >
-            Adicionar ao carrinho +
-          </button>
-          <Link
-            to={`/detalhes/${props?.id}`}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Ver Detalhes
-          </Link>
+          {isMenuOpen && (
+            <div className="absolute right-0 z-10 mt-2 w-44 rounded-lg border border-slate-100 bg-white text-sm text-slate-700 shadow-lg">
+              <Link
+                to="/carrinho"
+                className="block px-4 py-2 hover:bg-slate-50"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Ir para carrinho
+              </Link>
+              <button
+                type="button"
+                className="block w-full px-4 py-2 text-left hover:bg-slate-50"
+                onClick={handleAddDishToCart}
+              >
+                Adicionar ao carrinho +
+              </button>
+              <Link
+                to={`/detalhes/${id}`}
+                className="block px-4 py-2 hover:bg-slate-50"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Ver detalhes
+              </Link>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Conteúdo */}
+      <div className="flex flex-1 flex-col p-4">
+        <div className="space-y-1">
+          <h2 className="line-clamp-2 text-base font-semibold text-slate-900">
+            {nome}
+          </h2>
+
+          <Tag>{cozinha}</Tag>
+        </div>
+
+        <p className="mt-2 line-clamp-3 text-xs text-slate-600">
+          {descricao_resumida}
+        </p>
+
+        <div className="mt-3 flex items-end justify-between gap-2">
+          {typeof valor === 'number' && (
+            <div>
+              <span className="text-[11px] uppercase tracking-wide text-slate-400">
+                a partir de
+              </span>
+              <p className="text-sm font-semibold text-slate-900">
+                {valor.toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL',
+                })}
+              </p>
+            </div>
+          )}
+
+          <PrimaryButton
+            onClick={handleAddDishToCart}
+            className="sm:flex-none"
+          >
+            Adicionar
+          </PrimaryButton>
+        </div>
+      </div>
+
       <Snackbar
         message={snackbar.message}
         type={snackbar.type}
         duration={snackbar.duration}
-        onClose={() => setSnackbar({ message: '', type: 'info', duration: 0 })}
+        onClose={() =>
+          setSnackbar({ message: '', type: 'info', duration: 0 })
+        }
       />
-    </div>
+    </Card>
   );
 };
 

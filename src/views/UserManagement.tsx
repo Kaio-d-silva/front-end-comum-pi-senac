@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TabelaJS from '../components/TabelaJS';
+import EmptyState from '../components/ui/EmptyState';
+import LinkButton from '../components/ui/LinkButton';
+import SectionCard from '../components/ui/SectionCard';
 import { useIsMounted } from '../hooks/useIsMounted';
 import api from '../http/api';
 
@@ -14,21 +17,23 @@ interface User {
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [erro, setErro] = useState<string | null>(null);
+
   const navigate = useNavigate();
   const isMounted = useIsMounted();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // const response = await fetch('/api/users'); // Substitua pela URL correta da sua API
-        const response = await api.get<User[]>('/users/');
-        if (!response.status.toString().startsWith('2')) {
-          throw new Error('Erro ao buscar os usuários');
-        }
-        const data: User[] = response.data;
-        setUsers(data);
+        setLoading(true);
+        setErro(null);
+
+        const response = await api.get<User[]>('/users');
+
+        setUsers(response.data);
       } catch (error) {
         console.error('Erro ao buscar os usuários:', error);
+        setErro('Não foi possível carregar a lista de usuários.');
       } finally {
         setLoading(false);
       }
@@ -45,13 +50,12 @@ const UserManagement: React.FC = () => {
 
   const handleDelete = async (user: User) => {
     try {
-      const response = await api.delete(`/users/${user.id}`);
-      console.log('Usuário deletado com sucesso:', response.data);
+      await api.delete(`/users/${user.id}`);
+      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
     } catch (error) {
       console.error('Erro ao deletar o usuário:', error);
+      setErro('Erro ao deletar o usuário. Tente novamente.');
     }
-    console.log(`Deletar usuário com ID: ${user.id}`);
-    setUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
   };
 
   const handleView = (user: User) => {
@@ -61,30 +65,47 @@ const UserManagement: React.FC = () => {
   const columns: (keyof User | 'Ações')[] = ['nome', 'email', 'role', 'Ações'];
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Gestão de Usuários</h2>
-        <button
-          type="button"
-          onClick={() => navigate('/users/new')}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Novo Usuário
-        </button>
-      </div>
-      {loading ? (
-        <p className="text-center">Carregando usuários...</p>
-      ) : (
-        <TabelaJS
-          columns={columns}
-          data={users}
-          actions={{
-            edit: handleEdit,
-            delete: handleDelete,
-            view: handleView,
-          }}
-        />
-      )}
+    <div className="space-y-4">
+      <SectionCard
+        title="Gestão de usuários"
+        subtitle="Visualize, cadastre e gerencie os usuários do sistema."
+        actions={
+          <LinkButton to="/admin/usuarios/novo" variant="primary">
+            Novo usuário
+          </LinkButton>
+        }
+      >
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+          </div>
+        ) : erro ? (
+          <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {erro}
+          </div>
+        ) : users.length === 0 ? (
+          <EmptyState
+            title="Nenhum usuário cadastrado."
+            description="Cadastre o primeiro usuário para começar a usar o sistema."
+            icon={<span>👤</span>}
+            actions={
+              <LinkButton to="/admin/usuarios/novo" variant="primary">
+                Criar usuário
+              </LinkButton>
+            }
+          />
+        ) : (
+          <TabelaJS
+            columns={columns}
+            data={users}
+            actions={{
+              view: handleView,
+              edit: handleEdit,
+              delete: handleDelete,
+            }}
+          />
+        )}
+      </SectionCard>
     </div>
   );
 };

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import TabelaJS from '../components/TabelaJS';
+import EmptyState from '../components/ui/EmptyState';
+import LinkButton from '../components/ui/LinkButton';
+import SectionCard from '../components/ui/SectionCard';
 import api from '../http/api';
 
 export interface Order {
@@ -10,23 +13,37 @@ export interface Order {
   total: number;
 }
 
-const OrderManagement = () => {
+export interface OrderMapped extends Order {
+  id: number;
+  cliente: string;
+  status: string;
+  total: number;
+}
+
+const OrderManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderMapped[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
+        setErro(null);
+
         const response = await api.get<Order[]>('/pedidos');
-        if (!response.status.toString().startsWith('2')) {
-          throw new Error('Erro ao buscar os pedidos');
-        }
-        const data: Order[] = response.data;
-        console.log(data);
-        setOrders(data);
+
+        const ordersMapped = response.data.map((order) => ({
+          ...order,
+          cliente: order.cliente_nome,
+          total: Number(order.total.toFixed(2)),
+        }));
+
+        setOrders(ordersMapped ?? []);
       } catch (error) {
         console.error('Erro ao buscar os pedidos:', error);
+        setErro('Não foi possível carregar a lista de pedidos.');
       } finally {
         setLoading(false);
       }
@@ -34,56 +51,74 @@ const OrderManagement = () => {
 
     fetchData();
   }, []);
-  const handleEdit = (user: Order) => {
-    navigate(`/admin/pedidos/editar/${user.id}`);
+
+  const handleEdit = (order: Order) => {
+    navigate(`/admin/pedidos/editar/${order.id}`);
   };
 
   const handleDelete = async (order: Order) => {
     try {
-      const response = await api.delete(`/pedidos/${order.id}`);
-      console.log('Usuário deletado com sucesso:', response.data);
+      await api.delete(`/pedidos/${order.id}`);
+      setOrders((prevOrders) => prevOrders.filter((o) => o.id !== order.id));
     } catch (error) {
-      console.error('Erro ao deletar o usuário:', error);
+      console.error('Erro ao deletar o pedido:', error);
+      setErro('Erro ao deletar o pedido. Tente novamente.');
     }
-    console.log(`Deletar usuário com ID: ${order.id}`);
-    setOrders((prevOrders) => prevOrders.filter((o) => o.id !== order.id));
   };
 
   const handleView = (order: Order) => {
-    navigate(`/admin/pedidos/editar/${order.id}`);
+    navigate(`/admin/pedidos/detalhes/${order.id}`);
   };
-  const columns: (keyof Order | 'Ações')[] = [
-    'cliente_nome',
+
+  const columns: (keyof OrderMapped | 'Ações')[] = [
+    'cliente',
     'status',
     'total',
     'Ações',
   ];
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Gestão de Pedidos</h2>
-        <button
-          type="button"
-          onClick={() => navigate('/admin/pedidos/novo')}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Novo Pedido
-        </button>
-      </div>
-      {loading ? (
-        <p className="text-center">Carregando usuários...</p>
-      ) : (
-        <TabelaJS
-          columns={columns}
-          data={orders}
-          actions={{
-            edit: handleEdit,
-            delete: handleDelete,
-            view: handleView,
-          }}
-        />
-      )}
+    <div className="space-y-4">
+      <SectionCard
+        title="Gestão de pedidos"
+        subtitle="Visualize, edite e acompanhe os pedidos realizados."
+        actions={
+          <LinkButton to="/admin/pedidos/novo" variant="primary">
+            Novo pedido
+          </LinkButton>
+        }
+      >
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+          </div>
+        ) : erro ? (
+          <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {erro}
+          </div>
+        ) : orders.length === 0 ? (
+          <EmptyState
+            title="Nenhum pedido encontrado."
+            description="Assim que novos pedidos forem realizados, eles aparecerão aqui."
+            icon={<span>🧾</span>}
+            actions={
+              <LinkButton to="/admin/pedidos/novo" variant="primary">
+                Criar primeiro pedido
+              </LinkButton>
+            }
+          />
+        ) : (
+          <TabelaJS
+            columns={columns}
+            data={orders}
+            actions={{
+              view: handleView,
+              edit: handleEdit,
+              delete: handleDelete,
+            }}
+          />
+        )}
+      </SectionCard>
     </div>
   );
 };

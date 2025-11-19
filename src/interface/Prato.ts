@@ -1,5 +1,5 @@
 export default interface Prato {
-  id?: number;
+  id: number;
   nome: string;
   cozinha: string;
   descricao_resumida: string;

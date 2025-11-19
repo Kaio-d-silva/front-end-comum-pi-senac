@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import Snackbar from '../components/Snackbar';
+import FormField from '../components/ui/FormField';
+import PrimaryButton from '../components/ui/PrimaryButton';
 import useForm from '../hooks/useForm';
 import api from '../http/api';
 
 interface SnackbarState {
   message: string;
-  type?: 'success' | 'error' | 'warning' | 'info'; // Torna o tipo opcional
+  type?: 'success' | 'error' | 'warning' | 'info';
   duration: number;
 }
 
@@ -22,15 +24,40 @@ export default function Login() {
     duration: 0,
   });
 
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
-  const login = async () => {
+  const login = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     const duration = 5000;
 
-    if (!validate) {
+    const isValid = validate({
+      email: (value) =>
+        !value
+          ? 'O e-mail é obrigatório.'
+          : !/\S+@\S+\.\S+/.test(String(value))
+            ? 'Informe um e-mail válido.'
+            : null,
+      senha: (value) =>
+        !value || String(value).length < 4
+          ? 'A senha deve ter pelo menos 4 caracteres.'
+          : null,
+    });
+
+    if (!isValid) {
+      setSnackbar({
+        message: 'Preencha os campos corretamente antes de continuar.',
+        type: 'warning',
+        duration: 4000,
+      });
       return;
     }
+
     try {
+      setLoading(true);
+
       const response = await api.post<{
         token: string;
         refreshToken: string;
@@ -44,11 +71,13 @@ export default function Login() {
 
       localStorage.setItem('token', token);
       localStorage.setItem('refreshToken', refreshToken);
+
       setSnackbar({
         message: message || 'Sucesso ao logar.',
         type: 'success',
         duration,
       });
+
       setTimeout(() => {
         navigate('/admin/home');
       }, duration);
@@ -56,59 +85,54 @@ export default function Login() {
       const axiosError = error as {
         response?: { data?: { message?: string } };
       };
+
       setSnackbar({
         message:
-          axiosError.response?.data?.message || 'Erro ao realizar login.',
+          axiosError.response?.data?.message ||
+          'Erro ao realizar login. Verifique seus dados e tente novamente.',
         type: 'error',
-        duration: 10000,
+        duration: 8000,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl">
-        <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
-        <div className="w-full mb-4">
-          <input
-            type="text"
-            placeholder="Email"
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-sm sm:p-7">
+        <h2 className="mb-1 text-center text-xl font-semibold text-slate-900 sm:text-2xl">
+          Login
+        </h2>
+        <p className="mb-6 text-center text-xs text-slate-500 sm:text-sm">
+          Acesse a área administrativa com seu e-mail e senha.
+        </p>
+
+        <form onSubmit={login} className="space-y-4">
+          <FormField
+            label="E-mail"
+            type="email"
+            placeholder="Digite seu e-mail"
             value={values.email}
             onChange={handleChange('email')}
-            className={`w-full p-2 border rounded ${
-              errors.email
-                ? 'border-red-500'
-                : values.email
-                  ? 'border-blue-500'
-                  : 'border-gray-300'
-            }`}
+            error={errors.email}
           />
-          {errors.email && <p>{errors.email}</p>}
-        </div>
-        <div className="w-full mb-4">
-          <input
+
+          <FormField
+            label="Senha"
             type="password"
-            placeholder="Senha"
+            placeholder="Digite sua senha"
             value={values.senha}
             onChange={handleChange('senha')}
-            className={`w-full p-2 border rounded ${
-              errors.senha
-                ? 'border-red-500'
-                : values.senha
-                  ? 'border-blue-500'
-                  : 'border-gray-300'
-            }`}
+            error={errors.senha}
           />
-          {errors.senha && <p>{errors.senha}</p>}
-        </div>
-        <button
-          type="button"
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
-          onClick={login}
-        >
-          Entrar
-        </button>
+
+          <PrimaryButton type="submit" fullWidth disabled={loading}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </PrimaryButton>
+        </form>
       </div>
+
       <Snackbar
         message={snackbar.message}
         type={snackbar.type}

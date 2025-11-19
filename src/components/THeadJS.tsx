@@ -6,10 +6,14 @@ interface THeadJSProps {
 
 const THeadJS: React.FC<THeadJSProps> = ({ columns }) => {
   return (
-    <thead>
-      <tr className="bg-gray-200">
+    <thead className="bg-slate-100">
+      <tr>
         {columns.map((column, index) => (
-          <th key={index} className="border border-gray-300 p-2">
+          <th
+            key={index}
+            scope="col"
+            className="border border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-700"
+          >
             {column}
           </th>
         ))}

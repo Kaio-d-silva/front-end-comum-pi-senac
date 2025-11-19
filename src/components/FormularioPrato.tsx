@@ -2,15 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import useForm from '../hooks/useForm';
 import api from '../http/api';
-import Pedido from '../interface/Pedido';
+import Prato from '../interface/Prato';
 import Snackbar from './Snackbar';
+import PageLayout from './layout/PageLayout';
+import FormField from './ui/FormField';
+import PrimaryButton from './ui/PrimaryButton';
+import TextAreaField from './ui/TextAreaField';
 
-export interface PedidoFormProps {
+export interface PratoFormProps {
   isEditing?: boolean; // Indica se o formulário está no modo de edição
 }
 
-interface PedidoFormParams extends Record<string, string | undefined> {
-  id?: string; // ID do usuário, opcional
+interface PratoFormParams extends Record<string, string | undefined> {
+  id?: string;
 }
 
 interface SnackbarState {
@@ -19,13 +23,17 @@ interface SnackbarState {
   duration: number;
 }
 
-const FormularioPedido: React.FC<PedidoFormProps> = ({ isEditing = false }) => {
+const FormularioPrato: React.FC<PratoFormProps> = ({ isEditing = false }) => {
   const [snackbar, setSnackbar] = useState<SnackbarState>({
     message: '',
     type: 'success',
     duration: 0,
   });
-  const defaultPedidoValues = {
+
+  const [loadingPrato, setLoadingPrato] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const defaultPratoValues = {
     nome: '',
     cozinha: '',
     descricao_resumida: '',
@@ -33,17 +41,20 @@ const FormularioPedido: React.FC<PedidoFormProps> = ({ isEditing = false }) => {
     imagem: '',
     valor: 0,
   };
-  const { values, errors, handleChange, validate, updateValues } =
-    useForm(defaultPedidoValues);
 
-  const { id } = useParams<PedidoFormParams>();
+  const { values, errors, handleChange, validate, updateValues } =
+    useForm(defaultPratoValues);
+
+  const { id } = useParams<PratoFormParams>();
 
   useEffect(() => {
     if (isEditing && id) {
-      // Busca os dados do usuário para edição
-      const fetchUser = async () => {
+      const fetchPrato = async () => {
         try {
-          const response = await api.get(`/pedidos/${id}`);
+          setLoadingPrato(true);
+
+          const response = await api.get<Prato>(`/pratos/${id}`);
+
           const {
             nome,
             cozinha,
@@ -52,6 +63,7 @@ const FormularioPedido: React.FC<PedidoFormProps> = ({ isEditing = false }) => {
             imagem,
             valor,
           } = response.data;
+
           updateValues({
             nome,
             cozinha,
@@ -66,12 +78,14 @@ const FormularioPedido: React.FC<PedidoFormProps> = ({ isEditing = false }) => {
             type: 'error',
             duration: 10000,
           });
+        } finally {
+          setLoadingPrato(false);
         }
       };
 
-      fetchUser();
+      fetchPrato();
     }
-  }, [id, isEditing]);
+  }, [id, isEditing, updateValues]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,169 +101,142 @@ const FormularioPedido: React.FC<PedidoFormProps> = ({ isEditing = false }) => {
         !value || isNaN(Number(value))
           ? 'O valor deve ser um número válido.'
           : null,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      imagem: (value) => {
-        return null;
-      },
+      imagem: () => null,
     });
 
-    if (isValid) {
-      try {
-        await api.post<Pedido[]>('/pedidos', values);
+    if (!isValid) return;
+
+    try {
+      setSubmitting(true);
+
+      if (isEditing && id) {
+        await api.put<Prato>(`/pratos/${id}`, values);
         setSnackbar({
-          message: 'Pedido cadastrado com sucesso!',
+          message: 'Prato atualizado com sucesso!',
           type: 'success',
           duration: 10000,
         });
-        updateValues(defaultPedidoValues);
-      } catch (error) {
-        console.error('Erro ao cadastrar o prato:', error);
+      } else {
+        await api.post<Prato[]>('/pratos', values);
         setSnackbar({
-          message: 'Erro ao cadastrar o prato. Tente novamente.',
-          type: 'error',
+          message: 'Prato cadastrado com sucesso!',
+          type: 'success',
           duration: 10000,
         });
+        updateValues(defaultPratoValues);
       }
+    } catch (error) {
+      console.error('Erro ao salvar o prato:', error);
+      setSnackbar({
+        message: 'Erro ao salvar o prato. Tente novamente.',
+        type: 'error',
+        duration: 10000,
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100 p-6 flex items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-md rounded-lg p-6 w-full max-w-lg"
-      >
-        <h1 className="text-2xl font-bold mb-6 text-center">
-          Cadastrar Novo Pedido
-        </h1>
+  const pageTitle = isEditing ? 'Editar prato' : 'Cadastrar novo prato';
+  const pageSubtitle = isEditing
+    ? 'Atualize as informações do prato cadastrado.'
+    : 'Preencha as informações para cadastrar um novo prato no cardápio.';
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Imagem do Pedido
-          </label>
-          <input
-            type="text"
+  return (
+    <PageLayout title={pageTitle} subtitle={pageSubtitle}>
+      <section className="mt-4 flex justify-center">
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-sm"
+        >
+          {loadingPrato && isEditing && (
+            <div className="mb-2 h-8 w-full animate-pulse rounded bg-slate-100" />
+          )}
+
+          <FormField
+            label="Imagem do prato"
             name="imagem"
+            type="text"
+            placeholder="Cole a URL da imagem do prato"
             value={values.imagem}
             onChange={handleChange('imagem')}
-            placeholder="Cole a url da imagem do prato"
-            className={`w-full border rounded p-2 ${
-              errors.nome ? 'border-red-500' : 'border-gray-300'
-            }`}
+            error={errors.imagem}
           />
-          {errors.imagem && (
-            <p className="text-red-500 text-sm">{errors.imagem}</p>
-          )}
-        </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome do Pedido
-          </label>
-          <input
-            type="text"
+          <FormField
+            label="Nome do prato"
             name="nome"
+            type="text"
+            placeholder="Digite o nome do prato"
             value={values.nome}
             onChange={handleChange('nome')}
-            placeholder="Digite o nome do prato"
-            className={`w-full border rounded p-2 ${
-              errors.nome ? 'border-red-500' : 'border-gray-300'
-            }`}
+            error={errors.nome}
           />
-          {errors.nome && <p className="text-red-500 text-sm">{errors.nome}</p>}
-        </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Cozinha
-          </label>
-          <input
-            type="text"
+          <FormField
+            label="Cozinha"
             name="cozinha"
+            type="text"
+            placeholder="Digite o tipo de cozinha"
             value={values.cozinha}
             onChange={handleChange('cozinha')}
-            placeholder="Digite o tipo de cozinha"
-            className={`w-full border rounded p-2 ${
-              errors.cozinha ? 'border-red-500' : 'border-gray-300'
-            }`}
+            error={errors.cozinha}
           />
-          {errors.cozinha && (
-            <p className="text-red-500 text-sm">{errors.cozinha}</p>
-          )}
-        </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Descrição Resumida
-          </label>
-          <input
-            type="text"
+          <FormField
+            label="Descrição resumida"
             name="descricao_resumida"
+            type="text"
+            placeholder="Digite a descrição resumida do prato"
             value={values.descricao_resumida}
             onChange={handleChange('descricao_resumida')}
-            placeholder="Digite a descrição resumida do prato"
-            className={`w-full border rounded p-2 ${
-              errors.descricao_resumida ? 'border-red-500' : 'border-gray-300'
-            }`}
+            error={errors.descricao_resumida}
           />
-          {errors.descricao_resumida && (
-            <p className="text-red-500 text-sm">{errors.descricao_resumida}</p>
-          )}
-        </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Descrição Detalhada
-          </label>
-          <textarea
+          <TextAreaField
+            label="Descrição detalhada"
             name="descricao_detalhada"
+            placeholder="Digite a descrição detalhada do prato"
             value={values.descricao_detalhada}
             onChange={handleChange('descricao_detalhada')}
-            placeholder="Digite a descrição detalhada do prato"
-            className={`w-full border rounded p-2 ${
-              errors.descricao_detalhada ? 'border-red-500' : 'border-gray-300'
-            }`}
+            error={errors.descricao_detalhada}
             rows={4}
           />
-          {errors.descricao_detalhada && (
-            <p className="text-red-500 text-sm">{errors.descricao_detalhada}</p>
-          )}
-        </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Valor do Pedido
-          </label>
-          <input
-            type="text"
+          <FormField
+            label="Valor do prato"
             name="valor"
+            type="text"
+            placeholder="Digite o valor do prato"
             value={values.valor}
             onChange={handleChange('valor')}
-            placeholder="Digite o valor do prato"
-            className={`w-full border rounded p-2 ${
-              errors.valor ? 'border-red-500' : 'border-gray-300'
-            }`}
+            error={errors.valor}
           />
-          {errors.valor && (
-            <p className="text-red-500 text-sm">{errors.valor}</p>
-          )}
-        </div>
 
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
-        >
-          Cadastrar Pedido
-        </button>
-      </form>
+          <PrimaryButton
+            type="submit"
+            fullWidth
+            disabled={submitting || (loadingPrato && isEditing)}
+          >
+            {submitting
+              ? isEditing
+                ? 'Salvando alterações...'
+                : 'Cadastrando prato...'
+              : isEditing
+                ? 'Salvar alterações'
+                : 'Cadastrar prato'}
+          </PrimaryButton>
+        </form>
+      </section>
+
       <Snackbar
         message={snackbar.message}
         type={snackbar.type}
         duration={snackbar.duration}
         onClose={() => setSnackbar({ message: '', type: 'info', duration: 0 })}
       />
-    </div>
+    </PageLayout>
   );
 };
 
-export default FormularioPedido;
+export default FormularioPrato;

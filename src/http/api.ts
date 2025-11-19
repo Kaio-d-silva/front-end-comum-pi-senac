@@ -12,7 +12,7 @@ interface ApiError {
 
 // Cria uma instância do axios
 const api: AxiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL ?? "https://cardapio-api-cjfye6fgf2geb4fs.canadacentral-01.azurewebsites.net/api", // Substitua pela URL base da sua API
+  baseURL: process.env.REACT_APP_API_BASE_URL ?? "http://localhost:3000/api", // Substitua pela URL base da sua API
   headers: {
     'Content-Type': 'application/json',
   },

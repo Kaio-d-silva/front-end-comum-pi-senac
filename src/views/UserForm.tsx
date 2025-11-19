@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Snackbar from '../components/Snackbar';
 import { useIsMounted } from '../hooks/useIsMounted';
 import api from '../http/api';
+import FormField from '../components/ui/FormField';
+import PrimaryButton from '../components/ui/PrimaryButton';
+import SecondaryButton from '../components/ui/SecondaryButton';
 
 interface SnackbarState {
   message: string;
@@ -11,11 +14,11 @@ interface SnackbarState {
 }
 
 interface UserFormParams extends Record<string, string | undefined> {
-  id?: string; // ID do usuário, opcional
+  id?: string;
 }
 
 interface UserFormProps {
-  isEditing?: boolean; // Indica se o formulário está no modo de edição
+  isEditing?: boolean;
 }
 
 function UserForm({ isEditing = false }: UserFormProps): JSX.Element {
@@ -27,16 +30,18 @@ function UserForm({ isEditing = false }: UserFormProps): JSX.Element {
     type: 'success',
     duration: 0,
   });
+  const [loadingUser, setLoadingUser] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
   const isMounted = useIsMounted();
   const { id } = useParams<UserFormParams>();
 
   useEffect(() => {
-    if (isEditing && id) {
-      // Busca os dados do usuário para edição
+    if (isEditing && id && isMounted()) {
       const fetchUser = async () => {
         try {
+          setLoadingUser(true);
           const response = await api.get<{ nome: string; email: string }>(
             `/users/${id}`,
           );
@@ -49,25 +54,38 @@ function UserForm({ isEditing = false }: UserFormProps): JSX.Element {
             type: 'error',
             duration: 10000,
           });
+        } finally {
+          setLoadingUser(false);
         }
       };
 
-      if (isMounted()) {
-        fetchUser();
-      }
+      fetchUser();
     }
   }, [id, isEditing, isMounted]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    // Validações bem simples (se quiser podemos plugar useForm depois)
+    if (!name.trim() || !email.trim() || (!isEditing && !password.trim())) {
+      setSnackbar({
+        message: 'Preencha todos os campos obrigatórios.',
+        type: 'warning',
+        duration: 5000,
+      });
+      return;
+    }
+
     try {
+      setSubmitting(true);
+
       const url = isEditing ? `/users/${id}` : '/users';
       const method = isEditing ? 'put' : 'post';
+
       const response = await api[method](url, {
         nome: name,
         email,
-        senha: password,
+        senha: password || undefined,
       });
 
       if (response.status >= 200 && response.status < 300) {
@@ -76,8 +94,9 @@ function UserForm({ isEditing = false }: UserFormProps): JSX.Element {
             ? 'Usuário atualizado com sucesso'
             : 'Usuário criado com sucesso',
           type: 'success',
-          duration: 10000,
+          duration: 6000,
         });
+
         navigate('/admin/usuarios');
       }
     } catch (error: unknown) {
@@ -89,50 +108,88 @@ function UserForm({ isEditing = false }: UserFormProps): JSX.Element {
         type: 'error',
         duration: 10000,
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <input
-        type="text"
-        placeholder="Nome"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="w-full p-3 mb-3 border rounded"
-        required
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full p-3 mb-3 border rounded"
-        required
-      />
-      {!isEditing && (
-        <input
-          type="password"
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-3 mb-4 border rounded"
-          required
-        />
-      )}
-      <button
-        type="submit"
-        className="w-full bg-blue-500 text-white p-3 rounded hover:bg-blue-600"
+    <div className="w-full max-w-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-4 rounded-xl bg-white p-4 shadow-sm sm:p-6"
       >
-        {isEditing ? 'Salvar Alterações' : 'Criar Usuário'}
-      </button>
+        <h2 className="text-base font-semibold text-slate-900 sm:text-lg">
+          {isEditing ? 'Editar usuário' : 'Criar usuário'}
+        </h2>
+
+        {loadingUser && isEditing && (
+          <p className="text-xs text-slate-500">Carregando dados do usuário...</p>
+        )}
+
+        <FormField
+          label="Nome"
+          type="text"
+          placeholder="Digite o nome do usuário"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+
+        <FormField
+          label="E-mail"
+          type="email"
+          placeholder="Digite o e-mail do usuário"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        {!isEditing && (
+          <FormField
+            label="Senha"
+            type="password"
+            placeholder="Crie uma senha para o usuário"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        )}
+
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <SecondaryButton
+            type="button"
+            onClick={() => navigate('/admin/usuarios')}
+            fullWidth
+            className="sm:w-auto"
+            disabled={submitting}
+          >
+            Cancelar
+          </SecondaryButton>
+
+          <PrimaryButton
+            type="submit"
+            fullWidth
+            className="sm:w-auto"
+            disabled={submitting || (loadingUser && isEditing)}
+          >
+            {submitting
+              ? isEditing
+                ? 'Salvando...'
+                : 'Criando...'
+              : isEditing
+              ? 'Salvar alterações'
+              : 'Criar usuário'}
+          </PrimaryButton>
+        </div>
+      </form>
+
       <Snackbar
         message={snackbar.message}
         type={snackbar.type}
         duration={snackbar.duration}
-        onClose={() => setSnackbar({ message: '', type: 'info', duration: 0 })}
+        onClose={() =>
+          setSnackbar({ message: '', type: 'info', duration: 0 })
+        }
       />
-    </form>
+    </div>
   );
 }
 
